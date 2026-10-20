@@ -71,7 +71,7 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
         const savedMan = localStorage.getItem('love_slug_man');
         if (savedMan) {
           try {
-            setConfig(JSON.parse(savedMan));
+            setConfig({ ...DEFAULT_LOVE_CONFIG, ...JSON.parse(savedMan) });
             return;
           } catch {}
         }
@@ -127,7 +127,7 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
       const savedMan = localStorage.getItem('love_slug_man');
       if (savedMan) {
         try {
-          setConfig(JSON.parse(savedMan));
+          setConfig({ ...DEFAULT_LOVE_CONFIG, ...JSON.parse(savedMan) });
           return;
         } catch {}
       }
@@ -272,6 +272,13 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
       s: config.senderName,
       g: config.grabGiftLink,
       p: config.phoneNumber,
+      lt: config.letterTitle,
+      ls: config.letterSalutation,
+      lc: config.letterContent,
+      w: config.wishesContent,
+      pr: config.promisesContent,
+      sw: config.showWishes,
+      sp: config.showPromises,
       photos: config.photos.slice(0, 10).map((pt) => ({
         u: pt.url,
         c: pt.caption,
@@ -611,6 +618,48 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
             {/* TAB 3: CONTENT & GRAB */}
             {activeTab === 'content' && (
               <div className="space-y-4">
+                <div className="rounded-2xl border border-rose-100 bg-rose-50/60 p-4 space-y-4">
+                  <div>
+                    <p className="text-sm font-bold text-rose-950">Nội dung Bức thư gửi em</p>
+                    <p className="text-[11px] text-stone-500 mt-1">Mỗi dòng trong ô nhập sẽ được hiển thị thành một đoạn riêng. Bạn cũng có thể xuống dòng ngay trong một đoạn.</p>
+                  </div>
+                  <textarea
+                    value={(config.letterContent || []).join('\n\n')}
+                    onChange={(e) => setConfig({ ...config, letterContent: e.target.value.split(/\n\s*\n/).filter((line) => line.trim()) })}
+                    rows={8}
+                    placeholder="Nhập nội dung bức thư..."
+                    className="w-full rounded-xl border border-rose-200 bg-white p-3 text-xs leading-relaxed text-stone-800 focus:ring-2 focus:ring-rose-400 focus:outline-none resize-y"
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-rose-100 bg-white p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div><p className="text-sm font-bold text-stone-800">Lời chúc ý nghĩa</p><p className="text-[11px] text-stone-500">Mỗi đoạn cách nhau bằng một dòng trống.</p></div>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-rose-700 cursor-pointer"><input type="checkbox" checked={config.showWishes !== false} onChange={(e) => setConfig({ ...config, showWishes: e.target.checked })} className="accent-rose-600" /> Hiển thị</label>
+                  </div>
+                  <textarea
+                    value={(config.wishesContent || []).join('\n\n')}
+                    onChange={(e) => setConfig({ ...config, wishesContent: e.target.value.split(/\n\s*\n/).filter((line) => line.trim()) })}
+                    rows={5}
+                    placeholder="Nhập các lời chúc..."
+                    className="w-full rounded-xl border border-stone-200 p-3 text-xs leading-relaxed text-stone-800 focus:ring-2 focus:ring-rose-400 focus:outline-none resize-y"
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-rose-100 bg-white p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div><p className="text-sm font-bold text-stone-800">Lời hứa của anh</p><p className="text-[11px] text-stone-500">Mỗi đoạn cách nhau bằng một dòng trống.</p></div>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-rose-700 cursor-pointer"><input type="checkbox" checked={config.showPromises !== false} onChange={(e) => setConfig({ ...config, showPromises: e.target.checked })} className="accent-rose-600" /> Hiển thị</label>
+                  </div>
+                  <textarea
+                    value={(config.promisesContent || []).join('\n\n')}
+                    onChange={(e) => setConfig({ ...config, promisesContent: e.target.value.split(/\n\s*\n/).filter((line) => line.trim()) })}
+                    rows={5}
+                    placeholder="Nhập các lời hứa..."
+                    className="w-full rounded-xl border border-stone-200 p-3 text-xs leading-relaxed text-stone-800 focus:ring-2 focus:ring-rose-400 focus:outline-none resize-y"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
                     Tiêu đề thư tình:

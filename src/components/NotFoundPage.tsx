@@ -99,16 +99,16 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({
               className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold text-sm shadow-lg shadow-rose-500/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
             >
               <Camera size={18} />
-              <span>Vào Admin Tải Ảnh Cho {displayName}</span>
+              <span>Hãy vào Admin Tải Ảnh Cho {displayName}</span>
             </button>
 
-            <button
+            {/* <button
               onClick={() => handleOpenPreset('man')}
               className="w-full py-2.5 px-4 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 text-rose-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
             >
               <Heart size={14} className="text-rose-600" />
-              <span>Mở Xem Thiệp Mẫu Mặc Định Của Mẫn (?love=man)</span>
-            </button>
+              <span>Mở Xem Thiệp Mẫu Mặc Định</span>
+            </button> */}
           </div>
         ) : (
           /* Search for slug when missing */

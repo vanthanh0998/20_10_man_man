@@ -89,6 +89,13 @@ export default function App() {
               senderName: parsed.s || parsed.senderName,
               grabGiftLink: parsed.g || parsed.grabGiftLink,
               phoneNumber: parsed.p || parsed.phoneNumber,
+              letterTitle: parsed.lt || parsed.letterTitle,
+              letterSalutation: parsed.ls || parsed.letterSalutation,
+              letterContent: parsed.lc || parsed.letterContent,
+              wishesContent: parsed.w || parsed.wishesContent,
+              promisesContent: parsed.pr || parsed.promisesContent,
+              showWishes: parsed.sw ?? parsed.showWishes,
+              showPromises: parsed.sp ?? parsed.showPromises,
               photos: parsed.photos
                 ? parsed.photos.map((pt: { u: string; c: string; d: string }, i: number) => ({
                     id: `share-photo-${i}`,
@@ -297,6 +304,13 @@ export default function App() {
           herName={config.herName}
           senderName={config.senderName}
           bouquetImage=""
+          letterTitle={config.letterTitle}
+          letterSalutation={config.letterSalutation}
+          letterContent={config.letterContent}
+          wishesContent={config.wishesContent}
+          promisesContent={config.promisesContent}
+          showWishes={config.showWishes}
+          showPromises={config.showPromises}
         />
 
         {/* Photo Gallery Section */}

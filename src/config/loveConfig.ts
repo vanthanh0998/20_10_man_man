@@ -14,6 +14,10 @@ export interface LoveConfig {
   letterTitle: string;
   letterSalutation: string;
   letterContent: string[];
+  wishesContent: string[];
+  promisesContent: string[];
+  showWishes: boolean;
+  showPromises: boolean;
   photos: {
     id: string;
     url: string;
@@ -35,6 +39,19 @@ export const DEFAULT_LOVE_CONFIG: LoveConfig = {
     'Anh biết cuộc sống đôi khi có những mệt mỏi, áp lực và những ngày khiến em phải lo toan. Nhưng hãy nhớ rằng, em không cần phải luôn tỏ ra mạnh mẽ. Anh luôn ở đây, sẵn sàng làm chỗ dựa vững chãi, lắng nghe mọi điều em muốn giãi bày và cùng em đi qua mọi thăng trầm.',
     'Chúc công chúa của anh một ngày 20/10 ngập tràn hoa tươi, nụ cười luôn rạng rỡ trên môi, mọi điều ước đều thành hiện thực và mãi là người con gái hạnh phúc nhất.',
   ],
+  wishesContent: [
+    'Chúc em luôn giữ mãi nụ cười tỏa nắng và mỗi ngày đều tràn đầy năng lượng tích cực.',
+    'Chúc công việc của em luôn thuận buồm xuôi gió, mọi dự định đều thành công mỹ mãn.',
+    'Mong em luôn cảm nhận được rằng mình là người phụ nữ được yêu thương và nâng niu nhất.',
+  ],
+  promisesContent: [
+    'Luôn lắng nghe em với tất cả sự kiên nhẫn và thấu hiểu.',
+    'Là bờ vai ấm áp mỗi khi em cần một điểm tựa bình yên.',
+    'Cùng em chia sẻ những điều nhỏ nhặt và tạo nên thật nhiều kỷ niệm đẹp.',
+    'Tiếp tục yêu thương, bảo bọc và trân trọng em hơn mỗi ngày trôi qua.',
+  ],
+  showWishes: true,
+  showPromises: true,
   // 7 real photos bundled directly in source code for permanent high-speed loading everywhere
   photos: [
     {
