@@ -54,12 +54,18 @@ export default function App() {
             }));
             return;
           } else {
-            // It's a plain string nickname like ?love=manman
-            setConfig((prev) => ({ ...prev, herName: decodeURIComponent(encodedLove) }));
+            // It's a plain string nickname like ?love=man or ?love=manman
+            let rawName = decodeURIComponent(encodedLove);
+            if (rawName.toLowerCase() === 'man') rawName = 'Mận';
+            if (rawName.toLowerCase() === 'manman' || rawName.toLowerCase() === 'man_man') rawName = 'Mận Mận';
+            setConfig((prev) => ({ ...prev, herName: rawName }));
           }
         } catch {
-          // It's a plain string nickname like ?love=manman
-          setConfig((prev) => ({ ...prev, herName: decodeURIComponent(encodedLove) }));
+          // It's a plain string nickname like ?love=man or ?love=manman
+          let rawName = decodeURIComponent(encodedLove);
+          if (rawName.toLowerCase() === 'man') rawName = 'Mận';
+          if (rawName.toLowerCase() === 'manman' || rawName.toLowerCase() === 'man_man') rawName = 'Mận Mận';
+          setConfig((prev) => ({ ...prev, herName: rawName }));
         }
       }
 
@@ -78,14 +84,22 @@ export default function App() {
       // Check localStorage for saved admin edits
       const savedConfig = localStorage.getItem('love_site_full_config');
       if (savedConfig) {
-        const parsed: LoveConfig = JSON.parse(savedConfig);
-        setConfig({
-          ...parsed,
-          herName: urlHer || parsed.herName,
-          senderName: urlFrom || parsed.senderName,
-          grabGiftLink: urlGrab || parsed.grabGiftLink,
-          phoneNumber: urlPhone || parsed.phoneNumber,
-        });
+        try {
+          const parsed: LoveConfig = JSON.parse(savedConfig);
+          // Use saved photos only if user has at least 7 or explicitly custom photos
+          const useSavedPhotos = parsed.photos && parsed.photos.length >= 7;
+          setConfig((prev) => ({
+            ...prev,
+            ...parsed,
+            photos: useSavedPhotos ? parsed.photos : prev.photos,
+            herName: urlHer || parsed.herName || prev.herName,
+            senderName: urlFrom || parsed.senderName || prev.senderName,
+            grabGiftLink: urlGrab || parsed.grabGiftLink || prev.grabGiftLink,
+            phoneNumber: urlPhone || parsed.phoneNumber || prev.phoneNumber,
+          }));
+        } catch {
+          // safe fallback
+        }
       } else {
         setConfig((prev) => ({
           ...prev,

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, Sparkles, SlidersHorizontal, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import fallbackHeroImg from '../assets/images/romantic_girl_portrait_soft_1792465474737.jpg';
+import fallbackHeroImg from '../assets/my-photos/her-1.jpg';
 
 interface HeroSectionProps {
   herName: string;

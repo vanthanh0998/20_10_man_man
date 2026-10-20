@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Camera, Heart, Plus, Sparkles, X } from 'lucide-react';
-import fallbackImg1 from '../assets/images/romantic_girl_portrait_soft_1792465474737.jpg';
-import fallbackImg2 from '../assets/images/romantic_memories_moment_1792465473393.jpg';
-import fallbackImg3 from '../assets/images/romantic_red_roses_bouquet_1792465473755.jpg';
-import fallbackImg4 from '../assets/images/romantic_couple_sunset_1792465473676.jpg';
+import fallbackImg1 from '../assets/my-photos/her-1.jpg';
+import fallbackImg2 from '../assets/my-photos/her-2.jpg';
+import fallbackImg3 from '../assets/my-photos/her-3.jpg';
+import fallbackImg4 from '../assets/my-photos/her-4.jpg';
+import fallbackImg5 from '../assets/my-photos/her-5.jpg';
+import fallbackImg6 from '../assets/my-photos/her-6.jpg';
+import fallbackImg7 from '../assets/my-photos/her-7.jpg';
 
-const FALLBACK_PICS = [fallbackImg1, fallbackImg2, fallbackImg3, fallbackImg4];
+const FALLBACK_PICS = [fallbackImg1, fallbackImg2, fallbackImg3, fallbackImg4, fallbackImg5, fallbackImg6, fallbackImg7];
 
 export interface GalleryPhoto {
   id: string;

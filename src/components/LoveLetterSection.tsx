@@ -73,7 +73,7 @@ export const LoveLetterSection: React.FC<LoveLetterSectionProps> = ({
             <Quote className="absolute top-6 left-6 text-rose-200/60" size={48} />
             <div className="relative space-y-5 text-stone-700 leading-relaxed text-sm sm:text-base">
               <p className="font-serif-display text-lg sm:text-xl text-rose-900 font-semibold italic">
-                Em thương yêu,
+                {herName ? `${herName} thương yêu,` : 'Em thương yêu,'}
               </p>
 
               <p>
