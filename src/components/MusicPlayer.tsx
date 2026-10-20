@@ -30,7 +30,7 @@ export const MusicPlayer: React.FC<MusicPlayerProps> = ({ autoStartTrigger }) =>
   };
 
   return (
-    <div className="fixed bottom-6 right-5 z-50 flex items-center gap-2">
+    <div className="fixed bottom-5 right-3 sm:right-5 z-50 flex items-center gap-2">
       {/* Expanded controls */}
       {isExpanded && (
         <div className="flex items-center gap-3 rounded-full bg-white/95 px-4 py-2 shadow-lg backdrop-blur-md border border-rose-200 transition-all duration-300">

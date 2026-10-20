@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Settings, ShieldCheck, Sparkles } from 'lucide-react';
 import { RosePetalsCanvas } from './components/RosePetalsCanvas.tsx';
 import { MusicPlayer } from './components/MusicPlayer.tsx';
 import { IntroEnvelope } from './components/IntroEnvelope.tsx';
@@ -13,75 +14,78 @@ import { PhotoGallerySection, GalleryPhoto } from './components/PhotoGallerySect
 import { ReasonsSection } from './components/ReasonsSection.tsx';
 import { RomanticVouchersSection } from './components/RomanticVouchersSection.tsx';
 import { LoveReplyAndGiftSection } from './components/LoveReplyAndGiftSection.tsx';
-import { CustomizeModal } from './components/CustomizeModal.tsx';
-
-// High-fidelity generated image paths
-const HERO_SUNSET_IMG = '/src/assets/images/romantic_couple_sunset_1792465473676.jpg';
-const BOUQUET_ROSES_IMG = '/src/assets/images/romantic_red_roses_bouquet_1792465473755.jpg';
-const CAFE_DATE_IMG = '/src/assets/images/romantic_memories_moment_1792465473393.jpg';
-const GIRL_PORTRAIT_IMG = '/src/assets/images/romantic_girl_portrait_soft_1792465474737.jpg';
+import { AdminSetupModal } from './components/AdminSetupModal.tsx';
+import { LoveConfig, DEFAULT_LOVE_CONFIG } from './config/loveConfig.ts';
 
 export default function App() {
-  const [herName, setHerName] = useState<string>('Em Yêu');
-  const [senderName, setSenderName] = useState<string>('Anh Yêu');
-  const [grabGiftLink, setGrabGiftLink] = useState<string>('https://food.grab.com/vn/vi/');
-  const [phoneNumber, setPhoneNumber] = useState<string>('');
-
+  const [config, setConfig] = useState<LoveConfig>(DEFAULT_LOVE_CONFIG);
   const [isEnvelopeOpen, setIsEnvelopeOpen] = useState<boolean>(false);
   const [autoStartAudio, setAutoStartAudio] = useState<boolean>(false);
-  const [isCustomizeOpen, setIsCustomizeOpen] = useState<boolean>(false);
-
-  // Photos collection
-  const [photos, setPhotos] = useState<GalleryPhoto[]>([
-    {
-      id: 'photo-1',
-      url: GIRL_PORTRAIT_IMG,
-      caption: 'Nụ cười tỏa nắng giữa vườn hoa thơm ngát',
-      date: 'Nàng thơ của anh',
-    },
-    {
-      id: 'photo-2',
-      url: CAFE_DATE_IMG,
-      caption: 'Buổi chiều cà phê hẹn hò cùng cái nắm tay ấm áp',
-      date: 'Khoảnh khắc bình yên',
-    },
-    {
-      id: 'photo-3',
-      url: BOUQUET_ROSES_IMG,
-      caption: 'Bó hoa hồng nhung tươi thắm dành riêng tặng em',
-      date: '20 Tháng 10 Ngập Tràn Yêu Thương',
-    },
-    {
-      id: 'photo-4',
-      url: HERO_SUNSET_IMG,
-      caption: 'Cùng nhau ngắm hoàng hôn thanh bình',
-      date: 'Mãi bên nhau em nhé',
-    },
-  ]);
+  const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
 
   // Read URL query parameters and localStorage on mount
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
+
+      // Check if URL contains compressed 'love' config payload
+      const encodedLove = params.get('love');
+      if (encodedLove) {
+        try {
+          const jsonStr = decodeURIComponent(escape(atob(decodeURIComponent(encodedLove))));
+          const payload = JSON.parse(jsonStr);
+
+          setConfig((prev) => ({
+            ...prev,
+            herName: payload.h || prev.herName,
+            senderName: payload.s || prev.senderName,
+            grabGiftLink: payload.g || prev.grabGiftLink,
+            phoneNumber: payload.p || prev.phoneNumber,
+            photos: payload.photos
+              ? payload.photos.map((pt: { u: string; c: string; d: string }, i: number) => ({
+                  id: `share-${i}`,
+                  url: pt.u,
+                  caption: pt.c,
+                  date: pt.d || 'Khoảnh khắc kỷ niệm',
+                }))
+              : prev.photos,
+          }));
+          return;
+        } catch {
+          // fallback to individual params
+        }
+      }
+
+      // Check individual params: ?her=...&from=...&grab=...
       const urlHer = params.get('her');
       const urlFrom = params.get('from');
       const urlGrab = params.get('grab');
       const urlPhone = params.get('phone');
+      const urlAdmin = params.get('admin');
 
-      if (urlHer) setHerName(urlHer);
-      if (urlFrom) setSenderName(urlFrom);
-      if (urlGrab) setGrabGiftLink(urlGrab);
-      if (urlPhone) setPhoneNumber(urlPhone);
+      if (urlAdmin === '1' || urlAdmin === 'true') {
+        setIsAdminOpen(true);
+      }
 
-      // Saved state fallback
-      const savedConfig = localStorage.getItem('love_site_config_2010');
+      // Check localStorage for saved admin edits
+      const savedConfig = localStorage.getItem('love_site_full_config');
       if (savedConfig) {
-        const parsed = JSON.parse(savedConfig);
-        if (!urlHer && parsed.herName) setHerName(parsed.herName);
-        if (!urlFrom && parsed.senderName) setSenderName(parsed.senderName);
-        if (!urlGrab && parsed.grabGiftLink) setGrabGiftLink(parsed.grabGiftLink);
-        if (!urlPhone && parsed.phoneNumber) setPhoneNumber(parsed.phoneNumber);
-        if (parsed.photos && parsed.photos.length > 0) setPhotos(parsed.photos);
+        const parsed: LoveConfig = JSON.parse(savedConfig);
+        setConfig({
+          ...parsed,
+          herName: urlHer || parsed.herName,
+          senderName: urlFrom || parsed.senderName,
+          grabGiftLink: urlGrab || parsed.grabGiftLink,
+          phoneNumber: urlPhone || parsed.phoneNumber,
+        });
+      } else {
+        setConfig((prev) => ({
+          ...prev,
+          herName: urlHer || prev.herName,
+          senderName: urlFrom || prev.senderName,
+          grabGiftLink: urlGrab || prev.grabGiftLink,
+          phoneNumber: urlPhone || prev.phoneNumber,
+        }));
       }
     } catch {
       // safe fallback
@@ -93,21 +97,10 @@ export default function App() {
     setAutoStartAudio(true);
   };
 
-  const handleSaveCustomization = (data: {
-    herName: string;
-    senderName: string;
-    grabGiftLink: string;
-    phoneNumber: string;
-    photos: GalleryPhoto[];
-  }) => {
-    setHerName(data.herName);
-    setSenderName(data.senderName);
-    setGrabGiftLink(data.grabGiftLink);
-    setPhoneNumber(data.phoneNumber);
-    setPhotos(data.photos);
-
+  const handleSaveConfig = (newConfig: LoveConfig) => {
+    setConfig(newConfig);
     try {
-      localStorage.setItem('love_site_config_2010', JSON.stringify(data));
+      localStorage.setItem('love_site_full_config', JSON.stringify(newConfig));
     } catch {
       // storage quota safe
     }
@@ -123,58 +116,67 @@ export default function App() {
 
       {/* Intro Wax Seal Envelope Modal */}
       {!isEnvelopeOpen && (
-        <IntroEnvelope onOpen={handleEnvelopeOpen} herName={herName} />
+        <IntroEnvelope onOpen={handleEnvelopeOpen} herName={config.herName} />
       )}
 
-      {/* Main Website Sections */}
+      {/* Main Website Experience */}
       <main className="relative z-10">
-        {/* Hero Section with 3-Zone Navigation */}
+        {/* Hero Section */}
         <HeroSection
-          herName={herName}
-          senderName={senderName}
-          onOpenCustomize={() => setIsCustomizeOpen(true)}
-          heroImage={photos[0]?.url || GIRL_PORTRAIT_IMG}
+          herName={config.herName}
+          senderName={config.senderName}
+          onOpenCustomize={() => setIsAdminOpen(true)}
+          heroImage={config.photos[0]?.url || DEFAULT_LOVE_CONFIG.photos[0].url}
         />
 
         {/* Heartfelt Love Letter & 20/10 Wishes */}
         <LoveLetterSection
-          herName={herName}
-          senderName={senderName}
-          bouquetImage={BOUQUET_ROSES_IMG}
+          herName={config.herName}
+          senderName={config.senderName}
+          bouquetImage={config.photos[2]?.url || DEFAULT_LOVE_CONFIG.photos[2].url}
         />
 
-        {/* Romantic Photo Gallery with Upload Affordance */}
+        {/* Romantic Photo Gallery */}
         <PhotoGallerySection
-          photos={photos}
-          herName={herName}
-          onOpenCustomize={() => setIsCustomizeOpen(true)}
+          photos={config.photos}
+          herName={config.herName}
+          onOpenCustomize={() => setIsAdminOpen(true)}
         />
 
         {/* 6 Reasons Why I Love You */}
-        <ReasonsSection herName={herName} />
+        <ReasonsSection herName={config.herName} />
 
-        {/* Sweet Love Vouchers She Can Claim */}
-        <RomanticVouchersSection herName={herName} />
+        {/* Sweet Love Vouchers */}
+        <RomanticVouchersSection herName={config.herName} />
 
-        {/* Bottom Section: Grab Drink Gift + Heartfelt Love Reply Box */}
+        {/* Grab Drink Gift + Heartfelt Love Reply Box */}
         <LoveReplyAndGiftSection
-          herName={herName}
-          senderName={senderName}
-          grabGiftLink={grabGiftLink}
-          phoneNumber={phoneNumber}
+          herName={config.herName}
+          senderName={config.senderName}
+          grabGiftLink={config.grabGiftLink}
+          phoneNumber={config.phoneNumber}
         />
       </main>
 
-      {/* Customize & Upload Modal */}
-      <CustomizeModal
-        isOpen={isCustomizeOpen}
-        onClose={() => setIsCustomizeOpen(false)}
-        herName={herName}
-        senderName={senderName}
-        grabGiftLink={grabGiftLink}
-        phoneNumber={phoneNumber}
-        photos={photos}
-        onSave={handleSaveCustomization}
+      {/* Discreet Admin Floating Button at Bottom-Left */}
+      <div className="fixed bottom-5 left-3 sm:left-5 z-40">
+        <button
+          onClick={() => setIsAdminOpen(true)}
+          className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-stone-600 bg-white/95 hover:bg-white border border-stone-200 hover:border-rose-300 rounded-full shadow-md backdrop-blur-md transition-all hover:scale-105 active:scale-95 group"
+          title="Bảng Setup dành cho Admin (Mã PIN: 2010)"
+        >
+          <Settings size={13} className="text-stone-400 group-hover:text-rose-600 group-hover:rotate-45 transition-transform duration-300" />
+          <span className="hidden sm:inline">Setup Admin</span>
+          <span className="sm:hidden text-[10px]">Setup</span>
+        </button>
+      </div>
+
+      {/* Dedicated Admin Setup Modal */}
+      <AdminSetupModal
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
+        config={config}
+        onSaveConfig={handleSaveConfig}
       />
     </div>
   );

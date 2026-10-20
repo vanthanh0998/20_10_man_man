@@ -60,11 +60,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   return (
     <div className="relative pt-6 pb-16 lg:pt-8 lg:pb-24">
       {/* Top 3-Zone Navigation Bar */}
-      <header className="mx-auto max-w-6xl px-4 sm:px-6 mb-12 flex items-center justify-between gap-6 border-b border-rose-100/80 pb-4">
+      <header className="mx-auto max-w-6xl px-3 sm:px-6 mb-8 sm:mb-12 flex items-center justify-between gap-2 sm:gap-6 border-b border-rose-100/80 pb-3 sm:pb-4">
         {/* Zone 1: Single text wordmark */}
         <a
           href="#"
-          className="font-serif-display text-lg sm:text-xl font-bold tracking-tight text-rose-900 whitespace-nowrap shrink-0 flex items-center gap-1.5"
+          className="font-serif-display text-base sm:text-lg lg:text-xl font-bold tracking-tight text-rose-900 shrink-0 flex items-center gap-1"
         >
           <span>20.10 With Love</span>
           <span className="text-rose-500 font-sans text-sm">🌹</span>
@@ -90,25 +90,26 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         {/* Zone 3: 1 primary action */}
         <button
           onClick={onOpenCustomize}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-full border border-rose-200 transition-colors whitespace-nowrap shrink-0"
+          className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-full border border-rose-200 transition-colors shrink-0"
           title="Tải ảnh của nàng lên, đổi tên gọi và link Grab"
         >
-          <SlidersHorizontal size={13} />
-          <span>Tùy chỉnh ảnh & tên</span>
+          <SlidersHorizontal size={12} className="sm:w-[13px] sm:h-[13px]" />
+          <span className="hidden sm:inline">Tùy chỉnh ảnh & tên</span>
+          <span className="sm:hidden font-semibold">Cài đặt</span>
         </button>
       </header>
 
       {/* Main Hero Container */}
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="mx-auto max-w-6xl px-3 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           {/* Left Column: Typographic & Emotional Delivery */}
-          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+          <div className="lg:col-span-7 space-y-5 sm:space-y-6 text-center lg:text-left">
             {/* Clean unboxed metadata kicker */}
-            <div className="flex items-center justify-center lg:justify-start gap-2 text-xs font-semibold uppercase tracking-wider text-rose-600">
-              <span>Ngày Phụ Nữ Việt Nam</span>
-              <span aria-hidden="true">·</span>
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-rose-600">
               <span>20 Tháng 10</span>
-              <span aria-hidden="true">·</span>
+              <span aria-hidden="true" className="text-rose-300">·</span>
+              <span>Ngày Phụ Nữ VN</span>
+              <span aria-hidden="true" className="text-rose-300">·</span>
               <span>Gửi {herName}</span>
             </div>
 
