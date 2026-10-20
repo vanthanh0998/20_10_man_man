@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, Sparkles, SlidersHorizontal, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import fallbackHeroImg from '../assets/images/romantic_girl_portrait_soft_1792465474737.jpg';
 
 interface HeroSectionProps {
   herName: string;
@@ -73,9 +74,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   };
 
   return (
-    <div className="relative pt-6 pb-16 lg:pt-8 lg:pb-24">
+    <div className="relative pt-6 pb-16 lg:pt-8 lg:pb-24 w-full max-w-full overflow-hidden">
       {/* Top 3-Zone Navigation Bar */}
-      <header className="mx-auto max-w-6xl px-3 sm:px-6 mb-8 sm:mb-12 flex items-center justify-between gap-2 sm:gap-6 border-b border-rose-100/80 pb-3 sm:pb-4">
+      <header className="mx-auto max-w-6xl w-full px-3 sm:px-6 mb-8 sm:mb-12 flex items-center justify-between gap-1 sm:gap-6 border-b border-rose-100/80 pb-3 sm:pb-4">
         {/* Zone 1: Single text wordmark with secret admin trigger */}
         <a
           href="#"
@@ -83,8 +84,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           className="font-serif-display text-base sm:text-lg lg:text-xl font-bold tracking-tight text-rose-900 shrink-0 flex items-center gap-1 cursor-pointer select-none"
           title="20.10 With Love"
         >
-          <span>20.10 With Love</span>
-          <span className="text-rose-500 font-sans text-sm">🌹</span>
+          <span className="whitespace-nowrap">20.10 With Love</span>
+          <span className="text-rose-500 font-sans text-sm shrink-0">🌹</span>
         </a>
 
         {/* Zone 2: Clean single-line nav links */}
@@ -111,18 +112,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-full border border-rose-200 transition-colors shrink-0 shadow-sm"
             title="Tải ảnh của nàng lên, đổi tên gọi và link Grab"
           >
-            <SlidersHorizontal size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <SlidersHorizontal size={12} className="sm:w-[13px] sm:h-[13px] shrink-0" />
             <span className="hidden sm:inline">Tùy chỉnh ảnh & tên</span>
             <span className="sm:hidden font-semibold">Cài đặt</span>
           </button>
         ) : (
           <a
             href="#hop-qua-grab"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] sm:text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-full border border-rose-200 transition-colors shrink-0"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-full border border-rose-200 transition-colors shrink-0"
             title="Nhận món quà dành tặng em"
           >
-            <Gift size={13} className="text-rose-500" />
-            <span>Món Quà Cho Em</span>
+            <Gift size={12} className="text-rose-500 shrink-0" />
+            <span className="whitespace-nowrap">Món Quà Cho Em</span>
           </a>
         )}
       </header>
@@ -192,17 +193,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="lg:col-span-5">
             <div className="relative mx-auto max-w-md lg:max-w-none">
               {/* Soft decorative background glow */}
-              <div className="absolute -inset-2 rounded-3xl bg-gradient-to-tr from-rose-200/50 to-pink-200/40 blur-xl pointer-events-none" />
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-rose-200/40 to-pink-200/30 blur-lg pointer-events-none" />
 
               <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-rose-100 bg-white p-2">
                 <div className="relative aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/5] rounded-xl overflow-hidden bg-rose-50">
                   <img
-                    src={heroImage}
+                    src={heroImage || fallbackHeroImg}
                     alt={`Bức hình kỷ niệm cùng ${herName}`}
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = fallbackHeroImg;
+                    }}
                     className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
                   
                   {/* Photo caption overlay */}
                   <div className="absolute bottom-3 left-3 right-3 text-white">

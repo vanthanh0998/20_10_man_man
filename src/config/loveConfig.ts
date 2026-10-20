@@ -1,3 +1,8 @@
+import girlPortraitImg from '../assets/images/romantic_girl_portrait_soft_1792465474737.jpg';
+import cafeDateImg from '../assets/images/romantic_memories_moment_1792465473393.jpg';
+import bouquetRosesImg from '../assets/images/romantic_red_roses_bouquet_1792465473755.jpg';
+import sunsetCoupleImg from '../assets/images/romantic_couple_sunset_1792465473676.jpg';
+
 export interface LoveConfig {
   herName: string;
   senderName: string;
@@ -30,25 +35,25 @@ export const DEFAULT_LOVE_CONFIG: LoveConfig = {
   photos: [
     {
       id: 'photo-1',
-      url: '/src/assets/images/romantic_girl_portrait_soft_1792465474737.jpg',
+      url: girlPortraitImg,
       caption: 'Nụ cười tỏa nắng giữa vườn hoa thơm ngát',
       date: 'Nàng thơ của anh',
     },
     {
       id: 'photo-2',
-      url: '/src/assets/images/romantic_memories_moment_1792465473393.jpg',
+      url: cafeDateImg,
       caption: 'Buổi chiều cà phê hẹn hò cùng cái nắm tay ấm áp',
       date: 'Khoảnh khắc bình yên',
     },
     {
       id: 'photo-3',
-      url: '/src/assets/images/romantic_red_roses_bouquet_1792465473755.jpg',
+      url: bouquetRosesImg,
       caption: 'Bó hoa hồng nhung tươi thắm dành riêng tặng em',
       date: '20 Tháng 10 Ngập Tràn Yêu Thương',
     },
     {
       id: 'photo-4',
-      url: '/src/assets/images/romantic_couple_sunset_1792465473676.jpg',
+      url: sunsetCoupleImg,
       caption: 'Cùng nhau ngắm hoàng hôn thanh bình',
       date: 'Mãi bên nhau em nhé',
     },

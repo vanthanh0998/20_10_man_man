@@ -29,31 +29,37 @@ export default function App() {
     try {
       const params = new URLSearchParams(window.location.search);
 
-      // Check if URL contains compressed 'love' config payload
+      // Check if URL contains compressed 'love' config payload or plain nickname
       const encodedLove = params.get('love');
       if (encodedLove) {
         try {
           const jsonStr = decodeURIComponent(escape(atob(decodeURIComponent(encodedLove))));
           const payload = JSON.parse(jsonStr);
 
-          setConfig((prev) => ({
-            ...prev,
-            herName: payload.h || prev.herName,
-            senderName: payload.s || prev.senderName,
-            grabGiftLink: payload.g || prev.grabGiftLink,
-            phoneNumber: payload.p || prev.phoneNumber,
-            photos: payload.photos
-              ? payload.photos.map((pt: { u: string; c: string; d: string }, i: number) => ({
-                  id: `share-${i}`,
-                  url: pt.u,
-                  caption: pt.c,
-                  date: pt.d || 'Khoảnh khắc kỷ niệm',
-                }))
-              : prev.photos,
-          }));
-          return;
+          if (payload && (payload.h || payload.photos)) {
+            setConfig((prev) => ({
+              ...prev,
+              herName: payload.h || prev.herName,
+              senderName: payload.s || prev.senderName,
+              grabGiftLink: payload.g || prev.grabGiftLink,
+              phoneNumber: payload.p || prev.phoneNumber,
+              photos: payload.photos
+                ? payload.photos.map((pt: { u: string; c: string; d: string }, i: number) => ({
+                    id: `share-${i}`,
+                    url: pt.u,
+                    caption: pt.c,
+                    date: pt.d || 'Khoảnh khắc kỷ niệm',
+                  }))
+                : prev.photos,
+            }));
+            return;
+          } else {
+            // It's a plain string nickname like ?love=manman
+            setConfig((prev) => ({ ...prev, herName: decodeURIComponent(encodedLove) }));
+          }
         } catch {
-          // fallback to individual params
+          // It's a plain string nickname like ?love=manman
+          setConfig((prev) => ({ ...prev, herName: decodeURIComponent(encodedLove) }));
         }
       }
 
@@ -114,7 +120,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fffafb] text-stone-800 relative selection:bg-rose-200 selection:text-rose-900">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#fffafb] text-stone-800 relative selection:bg-rose-200 selection:text-rose-900">
       {/* Falling Rose Petals Canvas Effect */}
       <RosePetalsCanvas isEnabled={true} />
 
@@ -127,7 +133,7 @@ export default function App() {
       )}
 
       {/* Main Website Experience */}
-      <main className="relative z-10">
+      <main className="relative z-10 w-full max-w-full overflow-hidden">
         {/* Hero Section */}
         <HeroSection
           herName={config.herName}

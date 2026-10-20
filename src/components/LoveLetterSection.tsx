@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Heart, Sparkles, Quote, CheckCircle2 } from 'lucide-react';
+import fallbackBouquetImg from '../assets/images/romantic_red_roses_bouquet_1792465473755.jpg';
 
 interface LoveLetterSectionProps {
   herName: string;
@@ -170,9 +171,12 @@ export const LoveLetterSection: React.FC<LoveLetterSectionProps> = ({
           <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-xl border border-rose-100 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             <div className="md:col-span-5 aspect-[4/3] rounded-2xl overflow-hidden bg-rose-50 border border-rose-100">
               <img
-                src={bouquetImage}
+                src={bouquetImage || fallbackBouquetImg}
                 alt="Bó hoa hồng đỏ trao gửi yêu thương"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = fallbackBouquetImg;
+                }}
                 className="h-full w-full object-cover"
               />
             </div>

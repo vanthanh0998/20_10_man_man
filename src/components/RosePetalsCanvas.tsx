@@ -37,12 +37,12 @@ export const RosePetalsCanvas: React.FC<{ isEnabled?: boolean }> = ({ isEnabled 
     if (!ctx) return;
 
     let animationFrameId: number;
-    let width = (canvas.width = window.innerWidth);
+    let width = (canvas.width = document.documentElement.clientWidth || window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
     const handleResize = () => {
       if (!canvas) return;
-      width = canvas.width = window.innerWidth;
+      width = canvas.width = document.documentElement.clientWidth || window.innerWidth;
       height = canvas.height = window.innerHeight;
     };
 

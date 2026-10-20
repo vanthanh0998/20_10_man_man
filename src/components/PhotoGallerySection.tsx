@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
 import { Camera, Heart, Plus, Sparkles, X } from 'lucide-react';
+import fallbackImg1 from '../assets/images/romantic_girl_portrait_soft_1792465474737.jpg';
+import fallbackImg2 from '../assets/images/romantic_memories_moment_1792465473393.jpg';
+import fallbackImg3 from '../assets/images/romantic_red_roses_bouquet_1792465473755.jpg';
+import fallbackImg4 from '../assets/images/romantic_couple_sunset_1792465473676.jpg';
+
+const FALLBACK_PICS = [fallbackImg1, fallbackImg2, fallbackImg3, fallbackImg4];
 
 export interface GalleryPhoto {
   id: string;
@@ -69,6 +75,9 @@ export const PhotoGallerySection: React.FC<PhotoGallerySectionProps> = ({
                   src={photo.url}
                   alt={photo.caption}
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = FALLBACK_PICS[index % FALLBACK_PICS.length];
+                  }}
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
@@ -116,6 +125,9 @@ export const PhotoGallerySection: React.FC<PhotoGallerySectionProps> = ({
                   src={selectedPhoto.url}
                   alt={selectedPhoto.caption}
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = fallbackImg1;
+                  }}
                   className="max-h-[75vh] w-auto max-w-full object-contain"
                 />
               </div>
