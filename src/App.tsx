@@ -22,6 +22,7 @@ export default function App() {
   const [isEnvelopeOpen, setIsEnvelopeOpen] = useState<boolean>(false);
   const [autoStartAudio, setAutoStartAudio] = useState<boolean>(false);
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
+  const [isAdminMode, setIsAdminMode] = useState<boolean>(false);
 
   // Read URL query parameters and localStorage on mount
   useEffect(() => {
@@ -64,6 +65,7 @@ export default function App() {
       const urlAdmin = params.get('admin');
 
       if (urlAdmin === '1' || urlAdmin === 'true') {
+        setIsAdminMode(true);
         setIsAdminOpen(true);
       }
 
@@ -97,6 +99,11 @@ export default function App() {
     setAutoStartAudio(true);
   };
 
+  const handleSecretAdminUnlock = () => {
+    setIsAdminMode(true);
+    setIsAdminOpen(true);
+  };
+
   const handleSaveConfig = (newConfig: LoveConfig) => {
     setConfig(newConfig);
     try {
@@ -127,6 +134,8 @@ export default function App() {
           senderName={config.senderName}
           onOpenCustomize={() => setIsAdminOpen(true)}
           heroImage={config.photos[0]?.url || DEFAULT_LOVE_CONFIG.photos[0].url}
+          isAdminMode={isAdminMode}
+          onSecretAdminUnlock={handleSecretAdminUnlock}
         />
 
         {/* Heartfelt Love Letter & 20/10 Wishes */}
@@ -141,6 +150,7 @@ export default function App() {
           photos={config.photos}
           herName={config.herName}
           onOpenCustomize={() => setIsAdminOpen(true)}
+          isAdminMode={isAdminMode}
         />
 
         {/* 6 Reasons Why I Love You */}
@@ -158,18 +168,20 @@ export default function App() {
         />
       </main>
 
-      {/* Discreet Admin Floating Button at Bottom-Left */}
-      <div className="fixed bottom-5 left-3 sm:left-5 z-40">
-        <button
-          onClick={() => setIsAdminOpen(true)}
-          className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-stone-600 bg-white/95 hover:bg-white border border-stone-200 hover:border-rose-300 rounded-full shadow-md backdrop-blur-md transition-all hover:scale-105 active:scale-95 group"
-          title="Bảng Setup dành cho Admin (Mã PIN: 2010)"
-        >
-          <Settings size={13} className="text-stone-400 group-hover:text-rose-600 group-hover:rotate-45 transition-transform duration-300" />
-          <span className="hidden sm:inline">Setup Admin</span>
-          <span className="sm:hidden text-[10px]">Setup</span>
-        </button>
-      </div>
+      {/* Discreet Admin Floating Button at Bottom-Left: ONLY visible when logged in via ?admin=1 */}
+      {isAdminMode && (
+        <div className="fixed bottom-5 left-3 sm:left-5 z-40">
+          <button
+            onClick={() => setIsAdminOpen(true)}
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-stone-600 bg-white/95 hover:bg-white border border-stone-200 hover:border-rose-300 rounded-full shadow-md backdrop-blur-md transition-all hover:scale-105 active:scale-95 group"
+            title="Bảng Setup dành cho Admin (Mã PIN: 2010)"
+          >
+            <Settings size={13} className="text-stone-400 group-hover:text-rose-600 group-hover:rotate-45 transition-transform duration-300" />
+            <span className="hidden sm:inline">Setup Admin</span>
+            <span className="sm:hidden text-[10px]">Setup</span>
+          </button>
+        </div>
+      )}
 
       {/* Dedicated Admin Setup Modal */}
       <AdminSetupModal

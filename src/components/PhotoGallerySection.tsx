@@ -12,12 +12,14 @@ interface PhotoGallerySectionProps {
   photos: GalleryPhoto[];
   herName: string;
   onOpenCustomize: () => void;
+  isAdminMode?: boolean;
 }
 
 export const PhotoGallerySection: React.FC<PhotoGallerySectionProps> = ({
   photos,
   herName,
   onOpenCustomize,
+  isAdminMode = false,
 }) => {
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null);
 
@@ -36,13 +38,15 @@ export const PhotoGallerySection: React.FC<PhotoGallerySectionProps> = ({
             </h2>
           </div>
 
-          <button
-            onClick={onOpenCustomize}
-            className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-rose-700 bg-white hover:bg-rose-50 border border-rose-200 rounded-full shadow-sm transition-colors whitespace-nowrap"
-          >
-            <Plus size={16} />
-            <span>Tải ảnh của {herName} lên</span>
-          </button>
+          {isAdminMode && (
+            <button
+              onClick={onOpenCustomize}
+              className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-rose-700 bg-white hover:bg-rose-50 border border-rose-200 rounded-full shadow-sm transition-colors whitespace-nowrap"
+            >
+              <Plus size={16} />
+              <span>Tải ảnh của {herName} lên</span>
+            </button>
+          )}
         </div>
 
         {/* Polaroid Memory Grid */}

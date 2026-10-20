@@ -7,6 +7,8 @@ interface HeroSectionProps {
   senderName: string;
   onOpenCustomize: () => void;
   heroImage: string;
+  isAdminMode?: boolean;
+  onSecretAdminUnlock?: () => void;
 }
 
 const SWEET_WHISPERS = [
@@ -23,8 +25,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   senderName,
   onOpenCustomize,
   heroImage,
+  isAdminMode = false,
+  onSecretAdminUnlock,
 }) => {
   const [heartsCount, setHeartsCount] = useState<number>(520);
+  const [secretClickCount, setSecretClickCount] = useState<number>(0);
   const [currentWhisper, setCurrentWhisper] = useState<string>(
     "Chạm vào nút trái tim để gửi thêm ngàn lời yêu thương đến em"
   );
@@ -57,14 +62,26 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     }
   };
 
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const nextCount = secretClickCount + 1;
+    setSecretClickCount(nextCount);
+    if (nextCount >= 5) {
+      setSecretClickCount(0);
+      if (onSecretAdminUnlock) onSecretAdminUnlock();
+    }
+  };
+
   return (
     <div className="relative pt-6 pb-16 lg:pt-8 lg:pb-24">
       {/* Top 3-Zone Navigation Bar */}
       <header className="mx-auto max-w-6xl px-3 sm:px-6 mb-8 sm:mb-12 flex items-center justify-between gap-2 sm:gap-6 border-b border-rose-100/80 pb-3 sm:pb-4">
-        {/* Zone 1: Single text wordmark */}
+        {/* Zone 1: Single text wordmark with secret admin trigger */}
         <a
           href="#"
-          className="font-serif-display text-base sm:text-lg lg:text-xl font-bold tracking-tight text-rose-900 shrink-0 flex items-center gap-1"
+          onClick={handleLogoClick}
+          className="font-serif-display text-base sm:text-lg lg:text-xl font-bold tracking-tight text-rose-900 shrink-0 flex items-center gap-1 cursor-pointer select-none"
+          title="20.10 With Love"
         >
           <span>20.10 With Love</span>
           <span className="text-rose-500 font-sans text-sm">🌹</span>
@@ -87,16 +104,27 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </a>
         </nav>
 
-        {/* Zone 3: 1 primary action */}
-        <button
-          onClick={onOpenCustomize}
-          className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-full border border-rose-200 transition-colors shrink-0"
-          title="Tải ảnh của nàng lên, đổi tên gọi và link Grab"
-        >
-          <SlidersHorizontal size={12} className="sm:w-[13px] sm:h-[13px]" />
-          <span className="hidden sm:inline">Tùy chỉnh ảnh & tên</span>
-          <span className="sm:hidden font-semibold">Cài đặt</span>
-        </button>
+        {/* Zone 3: 1 primary action - Only show customize button if in Admin Mode */}
+        {isAdminMode ? (
+          <button
+            onClick={onOpenCustomize}
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-full border border-rose-200 transition-colors shrink-0 shadow-sm"
+            title="Tải ảnh của nàng lên, đổi tên gọi và link Grab"
+          >
+            <SlidersHorizontal size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span className="hidden sm:inline">Tùy chỉnh ảnh & tên</span>
+            <span className="sm:hidden font-semibold">Cài đặt</span>
+          </button>
+        ) : (
+          <a
+            href="#hop-qua-grab"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] sm:text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-full border border-rose-200 transition-colors shrink-0"
+            title="Nhận món quà dành tặng em"
+          >
+            <Gift size={13} className="text-rose-500" />
+            <span>Món Quà Cho Em</span>
+          </a>
+        )}
       </header>
 
       {/* Main Hero Container */}
