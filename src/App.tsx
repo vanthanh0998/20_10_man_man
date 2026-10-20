@@ -15,100 +15,162 @@ import { ReasonsSection } from './components/ReasonsSection.tsx';
 import { RomanticVouchersSection } from './components/RomanticVouchersSection.tsx';
 import { LoveReplyAndGiftSection } from './components/LoveReplyAndGiftSection.tsx';
 import { AdminSetupModal } from './components/AdminSetupModal.tsx';
+import { NotFoundPage } from './components/NotFoundPage.tsx';
 import { LoveConfig, DEFAULT_LOVE_CONFIG } from './config/loveConfig.ts';
+import { slugToVietnameseName } from './utils/vietnameseNameMap.ts';
 
 export default function App() {
   const [config, setConfig] = useState<LoveConfig>(DEFAULT_LOVE_CONFIG);
+  const [currentSlug, setCurrentSlug] = useState<string>('man');
+  const [isNotFound, setIsNotFound] = useState<boolean>(false);
   const [isEnvelopeOpen, setIsEnvelopeOpen] = useState<boolean>(false);
   const [autoStartAudio, setAutoStartAudio] = useState<boolean>(false);
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
   const [isAdminMode, setIsAdminMode] = useState<boolean>(false);
 
-  // Read URL query parameters and localStorage on mount
+  // Read URL query parameters and initialize configuration
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-
-      // Check if URL contains compressed 'love' config payload or plain nickname
-      const encodedLove = params.get('love');
-      if (encodedLove) {
-        try {
-          const jsonStr = decodeURIComponent(escape(atob(decodeURIComponent(encodedLove))));
-          const payload = JSON.parse(jsonStr);
-
-          if (payload && (payload.h || payload.photos)) {
-            setConfig((prev) => ({
-              ...prev,
-              herName: payload.h || prev.herName,
-              senderName: payload.s || prev.senderName,
-              grabGiftLink: payload.g || prev.grabGiftLink,
-              phoneNumber: payload.p || prev.phoneNumber,
-              photos: payload.photos
-                ? payload.photos.map((pt: { u: string; c: string; d: string }, i: number) => ({
-                    id: `share-${i}`,
-                    url: pt.u,
-                    caption: pt.c,
-                    date: pt.d || 'Khoảnh khắc kỷ niệm',
-                  }))
-                : prev.photos,
-            }));
-            return;
-          } else {
-            // It's a plain string nickname like ?love=man or ?love=manman
-            let rawName = decodeURIComponent(encodedLove);
-            if (rawName.toLowerCase() === 'man') rawName = 'Mận';
-            if (rawName.toLowerCase() === 'manman' || rawName.toLowerCase() === 'man_man') rawName = 'Mận Mận';
-            setConfig((prev) => ({ ...prev, herName: rawName }));
-          }
-        } catch {
-          // It's a plain string nickname like ?love=man or ?love=manman
-          let rawName = decodeURIComponent(encodedLove);
-          if (rawName.toLowerCase() === 'man') rawName = 'Mận';
-          if (rawName.toLowerCase() === 'manman' || rawName.toLowerCase() === 'man_man') rawName = 'Mận Mận';
-          setConfig((prev) => ({ ...prev, herName: rawName }));
-        }
-      }
-
-      // Check individual params: ?her=...&from=...&grab=...
-      const urlHer = params.get('her');
-      const urlFrom = params.get('from');
-      const urlGrab = params.get('grab');
-      const urlPhone = params.get('phone');
+      const urlLove = params.get('love');
       const urlAdmin = params.get('admin');
 
+      // Check Admin access
       if (urlAdmin === '1' || urlAdmin === 'true') {
         setIsAdminMode(true);
         setIsAdminOpen(true);
       }
 
-      // Check localStorage for saved admin edits
-      const savedConfig = localStorage.getItem('love_site_full_config');
-      if (savedConfig) {
+      // Requirement: If no ?love parameter is provided (and not admin), show 404 Not Found
+      if (!urlLove) {
+        if (urlAdmin === '1' || urlAdmin === 'true') {
+          // Admin mode opened without ?love, default to 'huong' for editing
+          setCurrentSlug('huong');
+          setIsNotFound(false);
+          const initialName = 'Hương';
+          setConfig((prev) => ({
+            ...prev,
+            herName: initialName,
+            letterTitle: `Những Lời Chúc Ngọt Ngào Nhất Dành Cho ${initialName}`,
+            letterSalutation: `${initialName} thương yêu,`,
+          }));
+        } else {
+          setIsNotFound(true);
+          return;
+        }
+      } else {
+        setIsNotFound(false);
+      }
+
+      const rawSlug = (urlLove || 'man').trim();
+      const cleanSlug = rawSlug.toLowerCase();
+      setCurrentSlug(cleanSlug);
+
+      // Check if custom payload parameter 'd' or 'payload' exists in URL
+      const encodedData = params.get('d') || params.get('payload');
+      let urlPayloadConfig: Partial<LoveConfig> | null = null;
+      if (encodedData) {
         try {
-          const parsed: LoveConfig = JSON.parse(savedConfig);
-          // Use saved photos only if user has at least 7 or explicitly custom photos
-          const useSavedPhotos = parsed.photos && parsed.photos.length >= 7;
+          const jsonStr = decodeURIComponent(escape(atob(decodeURIComponent(encodedData))));
+          const parsed = JSON.parse(jsonStr);
+          if (parsed) {
+            urlPayloadConfig = {
+              herName: parsed.h || parsed.herName,
+              senderName: parsed.s || parsed.senderName,
+              grabGiftLink: parsed.g || parsed.grabGiftLink,
+              phoneNumber: parsed.p || parsed.phoneNumber,
+              photos: parsed.photos
+                ? parsed.photos.map((pt: { u: string; c: string; d: string }, i: number) => ({
+                    id: `share-photo-${i}`,
+                    url: pt.u,
+                    caption: pt.c,
+                    date: pt.d || 'Khoảnh khắc kỷ niệm',
+                  }))
+                : undefined,
+            };
+          }
+        } catch {
+          // ignore corrupted payload
+        }
+      }
+
+      // Check individual URL params: ?her=...&from=...&photos=...
+      const urlHer = params.get('her');
+      const urlFrom = params.get('from');
+      const urlPhotos = params.get('photos');
+      let customUrlPhotos: GalleryPhoto[] | null = null;
+      if (urlPhotos) {
+        const photoUrls = urlPhotos.split(',').map((u) => u.trim()).filter(Boolean);
+        if (photoUrls.length > 0) {
+          customUrlPhotos = photoUrls.map((url, i) => ({
+            id: `custom-url-photo-${i}`,
+            url,
+            caption: `Khoảnh khắc bên ${urlHer || 'em'}`,
+            date: 'Kỷ niệm yêu thương',
+          }));
+        }
+      }
+
+      // CASE 1: Default Love Site for 'man' or 'manman' (Untouched, rock-solid with 7 bundled photos!)
+      if (cleanSlug === 'man' || cleanSlug === 'manman' || cleanSlug === 'man_man') {
+        const savedManConfig = localStorage.getItem('love_slug_man');
+        if (savedManConfig) {
+          try {
+            const parsed: LoveConfig = JSON.parse(savedManConfig);
+            setConfig({
+              ...DEFAULT_LOVE_CONFIG,
+              ...parsed,
+              // Always ensure 7 bundled photos are preserved unless user specifically uploaded new ones
+              photos:
+                customUrlPhotos ||
+                (parsed.photos && parsed.photos.length >= 7 ? parsed.photos : DEFAULT_LOVE_CONFIG.photos),
+              herName: urlHer || parsed.herName || DEFAULT_LOVE_CONFIG.herName,
+            });
+            return;
+          } catch {
+            // safe fallback
+          }
+        }
+
+        setConfig({
+          ...DEFAULT_LOVE_CONFIG,
+          photos: customUrlPhotos || DEFAULT_LOVE_CONFIG.photos,
+          herName: urlHer || DEFAULT_LOVE_CONFIG.herName,
+        });
+        return;
+      }
+
+      // CASE 2: Dynamic Custom Slug for other recipients (e.g., ?love=huong)
+      const mappedVietnameseName = slugToVietnameseName(cleanSlug);
+
+      // Check localStorage for saved edits of this specific slug
+      const savedSlugConfig = localStorage.getItem(`love_slug_${cleanSlug}`);
+      if (savedSlugConfig) {
+        try {
+          const parsed: LoveConfig = JSON.parse(savedSlugConfig);
           setConfig((prev) => ({
             ...prev,
             ...parsed,
-            photos: useSavedPhotos ? parsed.photos : prev.photos,
-            herName: urlHer || parsed.herName || prev.herName,
-            senderName: urlFrom || parsed.senderName || prev.senderName,
-            grabGiftLink: urlGrab || parsed.grabGiftLink || prev.grabGiftLink,
-            phoneNumber: urlPhone || parsed.phoneNumber || prev.phoneNumber,
+            ...(urlPayloadConfig || {}),
+            herName: urlHer || urlPayloadConfig?.herName || parsed.herName || mappedVietnameseName,
+            photos: customUrlPhotos || urlPayloadConfig?.photos || parsed.photos || prev.photos,
           }));
+          return;
         } catch {
-          // safe fallback
+          // fallback
         }
-      } else {
-        setConfig((prev) => ({
-          ...prev,
-          herName: urlHer || prev.herName,
-          senderName: urlFrom || prev.senderName,
-          grabGiftLink: urlGrab || prev.grabGiftLink,
-          phoneNumber: urlPhone || prev.phoneNumber,
-        }));
       }
+
+      // If not saved in localStorage yet, initialize with auto-accented Vietnamese name
+      setConfig((prev) => ({
+        ...prev,
+        ...(urlPayloadConfig || {}),
+        herName: urlHer || urlPayloadConfig?.herName || mappedVietnameseName,
+        senderName: urlFrom || urlPayloadConfig?.senderName || prev.senderName,
+        letterTitle: `Những Lời Chúc Ngọt Ngào Nhất Dành Cho ${urlHer || mappedVietnameseName}`,
+        letterSalutation: `${urlHer || mappedVietnameseName} thương yêu,`,
+        photos: customUrlPhotos || urlPayloadConfig?.photos || prev.photos,
+      }));
     } catch {
       // safe fallback
     }
@@ -124,14 +186,46 @@ export default function App() {
     setIsAdminOpen(true);
   };
 
-  const handleSaveConfig = (newConfig: LoveConfig) => {
+  const handleSaveConfig = (newConfig: LoveConfig, savedSlug?: string) => {
+    const targetSlug = (savedSlug || currentSlug || 'huong').toLowerCase().trim();
     setConfig(newConfig);
+    setCurrentSlug(targetSlug);
+    setIsNotFound(false);
+
     try {
+      // Save by slug so different recipients don't overwrite each other
+      localStorage.setItem(`love_slug_${targetSlug}`, JSON.stringify(newConfig));
       localStorage.setItem('love_site_full_config', JSON.stringify(newConfig));
+
+      // Update URL query parameters without reloading page
+      const url = new URL(window.location.href);
+      url.searchParams.set('love', targetSlug);
+      window.history.replaceState({}, '', url.toString());
     } catch {
       // storage quota safe
     }
   };
+
+  const handleSelectSlugFromNotFound = (chosenSlug: string) => {
+    const clean = chosenSlug.toLowerCase().trim();
+    const url = new URL(window.location.href);
+    url.searchParams.set('love', clean);
+    window.location.href = url.toString();
+  };
+
+  // Render Romantic 404 Page when ?love is missing
+  if (isNotFound) {
+    return (
+      <NotFoundPage
+        onOpenAdmin={() => {
+          setIsAdminMode(true);
+          setIsAdminOpen(true);
+          setIsNotFound(false);
+        }}
+        onSelectSlug={handleSelectSlugFromNotFound}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#fffafb] text-stone-800 relative selection:bg-rose-200 selection:text-rose-900">
@@ -209,6 +303,7 @@ export default function App() {
         onClose={() => setIsAdminOpen(false)}
         config={config}
         onSaveConfig={handleSaveConfig}
+        currentSlug={currentSlug}
       />
     </div>
   );

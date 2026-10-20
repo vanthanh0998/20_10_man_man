@@ -1,9 +1,13 @@
 /**
- * Utility to compress images and upload to free cloud image hosting (ImgBB)
- * or convert to lightweight optimized WebP.
+ * Utility to compress images into lightweight WebP/JPEG data URLs
+ * or upload to free cloud image hosting.
  */
 
-export async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<string> {
+export async function compressImage(
+  file: File,
+  maxWidth = 1000,
+  quality = 0.78
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -29,9 +33,20 @@ export async function compressImage(file: File, maxWidth = 1200, quality = 0.8):
         }
 
         ctx.drawImage(img, 0, 0, width, height);
-        // Export as WebP or JPEG
-        const dataUrl = elem.toDataURL('image/jpeg', quality);
-        resolve(dataUrl);
+
+        // Try webp first, fall back to jpeg
+        try {
+          const webpUrl = elem.toDataURL('image/webp', quality);
+          if (webpUrl.startsWith('data:image/webp')) {
+            resolve(webpUrl);
+            return;
+          }
+        } catch {
+          // fallback to jpeg
+        }
+
+        const jpegUrl = elem.toDataURL('image/jpeg', quality);
+        resolve(jpegUrl);
       };
       img.onerror = (err) => reject(err);
     };
@@ -40,33 +55,39 @@ export async function compressImage(file: File, maxWidth = 1200, quality = 0.8):
 }
 
 /**
- * Upload image to ImgBB free hosting API
- * Free public key or custom user key
+ * Upload image with graceful multi-tier fallback:
+ * 1. Optional ImgBB if key is provided
+ * 2. Instant optimized compressed data URL (100% reliable, zero external dependencies)
  */
-export async function uploadToImgBB(file: File, customApiKey?: string): Promise<string> {
-  // Free public API key for image hosting
-  const apiKey = customApiKey || '6d207e02198a847aa5fb3d03a46eacbb';
+export async function uploadImageDirect(
+  file: File,
+  optionalImgbbKey?: string
+): Promise<string> {
+  // If user provided a custom ImgBB key, try uploading with it
+  if (optionalImgbbKey && optionalImgbbKey.trim()) {
+    try {
+      const compressedDataUrl = await compressImage(file, 1200, 0.82);
+      const base64Raw = compressedDataUrl.replace(/^data:image\/[a-z]+;base64,/, '');
+      const formData = new FormData();
+      formData.append('image', base64Raw);
 
-  // First compress to avoid large upload
-  const base64DataUrl = await compressImage(file, 1400, 0.82);
-  const base64Raw = base64DataUrl.replace(/^data:image\/[a-z]+;base64,/, '');
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${optionalImgbbKey.trim()}`, {
+        method: 'POST',
+        body: formData,
+      });
 
-  const formData = new FormData();
-  formData.append('image', base64Raw);
-
-  const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Upload failed with status ${response.status}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data?.url) {
+          return json.data.url;
+        }
+      }
+    } catch {
+      // Fallback to local optimized base64
+    }
   }
 
-  const result = await response.json();
-  if (result.success && result.data?.url) {
-    return result.data.url;
-  }
-
-  throw new Error('Could not retrieve image URL from hosting service');
+  // Primary seamless method: High-quality optimized Canvas image
+  // Zero setup, works immediately on every device without third-party reliance
+  return await compressImage(file, 900, 0.78);
 }
