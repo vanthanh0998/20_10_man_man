@@ -1,0 +1,6 @@
+{
+  "name": "Chúc Mừng Ngày 20/10 - Gửi Người Con Gái Anh Yêu",
+  "description": "Website lãng mạn dành riêng tặng người phụ nữ tôi yêu nhân ngày 20/10 với cánh hoa hồng rơi, nhạc du dương, thư tình và món quà ngọt ngào.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
