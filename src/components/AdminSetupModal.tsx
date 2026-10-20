@@ -9,7 +9,6 @@ import {
   Plus,
   Trash2,
   Check,
-  Download,
   AlertCircle,
   Loader2,
   Camera,
@@ -18,10 +17,12 @@ import {
   Gift,
   Eye,
   Copy,
+  ShieldAlert,
 } from 'lucide-react';
 import { LoveConfig, DEFAULT_LOVE_CONFIG } from '../config/loveConfig.ts';
-import { uploadImageDirect, compressImage } from '../utils/cloudImageUploader.ts';
+import { uploadImageDirect } from '../utils/cloudImageUploader.ts';
 import { slugToVietnameseName } from '../utils/vietnameseNameMap.ts';
+import { isManSlug, isDefaultManPhoto } from '../utils/romanticPlaceholder.ts';
 
 interface AdminSetupModalProps {
   isOpen: boolean;
@@ -63,12 +64,47 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     if (isOpen) {
       const params = new URLSearchParams(window.location.search);
       const urlLove = params.get('love');
-      if (urlLove) {
-        setSlug(urlLove);
+      const activeSlug = (urlLove || currentSlug || 'huong').toLowerCase().trim();
+      setSlug(activeSlug);
+
+      if (isManSlug(activeSlug)) {
+        const savedMan = localStorage.getItem('love_slug_man');
+        if (savedMan) {
+          try {
+            setConfig(JSON.parse(savedMan));
+            return;
+          } catch {}
+        }
+        setConfig(DEFAULT_LOVE_CONFIG);
+      } else {
+        // Custom slug: load existing saved data if any, but NEVER leak Mẫn's photos!
+        const savedCustom = localStorage.getItem(`love_slug_${activeSlug}`);
+        const suggestedName = slugToVietnameseName(activeSlug);
+        if (savedCustom) {
+          try {
+            const parsed = JSON.parse(savedCustom);
+            const safePhotos = (parsed.photos || []).filter((p: any) => !isDefaultManPhoto(p.url));
+            setConfig({
+              ...DEFAULT_LOVE_CONFIG,
+              ...parsed,
+              herName: parsed.herName || suggestedName,
+              photos: safePhotos,
+            });
+            return;
+          } catch {}
+        }
+
+        // Brand new recipient: clean slate with 0 photos
+        setConfig({
+          ...DEFAULT_LOVE_CONFIG,
+          herName: suggestedName,
+          letterTitle: `Những Lời Chúc Ngọt Ngào Nhất Dành Cho ${suggestedName}`,
+          letterSalutation: `${suggestedName} thương yêu,`,
+          photos: [],
+        });
       }
-      setConfig(initialConfig);
     }
-  }, [isOpen, initialConfig]);
+  }, [isOpen, currentSlug]);
 
   if (!isOpen) return null;
 
@@ -87,16 +123,46 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     const cleanSlug = newSlug.toLowerCase().replace(/[^a-z0-9_-]/g, '');
     setSlug(cleanSlug);
 
-    // Auto suggest Vietnamese name if appropriate
-    const suggestedName = slugToVietnameseName(cleanSlug);
-    if (suggestedName && cleanSlug !== 'man' && cleanSlug !== 'manman') {
-      setConfig((prev) => ({
-        ...prev,
-        herName: suggestedName,
-        letterTitle: `Những Lời Chúc Ngọt Ngào Nhất Dành Cho ${suggestedName}`,
-        letterSalutation: `${suggestedName} thương yêu,`,
-      }));
+    if (isManSlug(cleanSlug)) {
+      const savedMan = localStorage.getItem('love_slug_man');
+      if (savedMan) {
+        try {
+          setConfig(JSON.parse(savedMan));
+          return;
+        } catch {}
+      }
+      setConfig(DEFAULT_LOVE_CONFIG);
+      return;
     }
+
+    // Dynamic slug for other recipient
+    const savedCustom = localStorage.getItem(`love_slug_${cleanSlug}`);
+    const suggestedName = slugToVietnameseName(cleanSlug);
+
+    if (savedCustom) {
+      try {
+        const parsed = JSON.parse(savedCustom);
+        const safePhotos = (parsed.photos || []).filter((p: any) => !isDefaultManPhoto(p.url));
+        setConfig({
+          ...DEFAULT_LOVE_CONFIG,
+          ...parsed,
+          herName: parsed.herName || suggestedName,
+          letterTitle: parsed.letterTitle || `Những Lời Chúc Ngọt Ngào Nhất Dành Cho ${suggestedName}`,
+          letterSalutation: parsed.letterSalutation || `${suggestedName} thương yêu,`,
+          photos: safePhotos,
+        });
+        return;
+      } catch {}
+    }
+
+    // New unconfigured slug -> start with EMPTY photos to protect privacy!
+    setConfig((prev) => ({
+      ...prev,
+      herName: suggestedName,
+      letterTitle: `Những Lời Chúc Ngọt Ngào Nhất Dành Cho ${suggestedName}`,
+      letterSalutation: `${suggestedName} thương yêu,`,
+      photos: [],
+    }));
   };
 
   // Upload local photos directly from device
@@ -105,14 +171,14 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
-    setUploadProgress(`Đang xử lý và tải ${files.length} ảnh...`);
+    setUploadProgress(`Đang xử lý và nén ${files.length} ảnh...`);
 
     const newPhotos = [...config.photos];
 
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setUploadProgress(`Đang nén & thêm ảnh ${i + 1}/${files.length}...`);
+        setUploadProgress(`Đang xử lý ảnh ${i + 1}/${files.length}...`);
 
         const dataUrl = await uploadImageDirect(file);
 
@@ -157,15 +223,28 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
     }));
   };
 
-  const handleUseDefaultPhotos = () => {
-    setConfig((prev) => ({
-      ...prev,
-      photos: DEFAULT_LOVE_CONFIG.photos,
-    }));
+  // Only allow restoring default photos if the slug is Mẫn
+  const handleRestoreManPhotos = () => {
+    if (isManSlug(slug)) {
+      setConfig((prev) => ({
+        ...prev,
+        photos: DEFAULT_LOVE_CONFIG.photos,
+      }));
+    }
   };
 
   const handleSaveAndApply = () => {
     const cleanSlug = slug.trim().toLowerCase() || 'huong';
+    const isMan = isManSlug(cleanSlug);
+
+    // If not 'man' and no photos are uploaded, notify user
+    if (!isMan && config.photos.length === 0) {
+      const confirmSaveWithoutPhotos = window.confirm(
+        `Bạn chưa tải ảnh nào cho ${config.herName || cleanSlug}. Để bảo vệ quyền riêng tư, trang web yêu cầu phải có ít nhất 1 ảnh của nàng thì thiệp mới hiển thị cho người xem. Bạn vẫn muốn lưu bản nháp này chứ?`
+      );
+      if (!confirmSaveWithoutPhotos) return;
+    }
+
     onSaveConfig(config, cleanSlug);
     onClose();
   };
@@ -193,9 +272,8 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
       s: config.senderName,
       g: config.grabGiftLink,
       p: config.phoneNumber,
-      // If photos are external URLs or compact
       photos: config.photos.slice(0, 10).map((pt) => ({
-        u: pt.url.startsWith('data:') ? pt.url.slice(0, 500) : pt.url,
+        u: pt.url,
         c: pt.caption,
         d: pt.date,
       })),
@@ -218,68 +296,69 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/80 p-3 sm:p-4 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-3xl bg-white p-5 sm:p-8 shadow-2xl my-6 max-h-[92vh] overflow-y-auto border border-rose-100">
+      <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-stone-200 overflow-hidden my-auto max-h-[90vh] flex flex-col">
         {/* Top Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-rose-100 mb-5">
+        <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4 bg-gradient-to-r from-rose-50 via-pink-50 to-white">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-rose-600 to-pink-500 text-white shadow-md shadow-rose-200">
-              {isUnlocked ? <Unlock size={18} /> : <Lock size={18} />}
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-600 text-white shadow-md shadow-rose-200">
+              <Sparkles size={18} />
             </div>
             <div>
-              <h2 className="font-serif-display text-base sm:text-xl font-bold text-stone-900">
-                Bảng Setup Thiệp 20/10 Theo Đường Link Riêng
-              </h2>
-              <p className="text-[11px] sm:text-xs text-stone-500">
-                Tạo link riêng cho vợ/người yêu (Ví dụ: <code className="text-rose-600 font-semibold">?love=huong</code>)
+              <h3 className="font-serif-display text-base font-bold text-stone-900">
+                Bảng Cài Đặt Cá Nhân Hóa (Admin)
+              </h3>
+              <p className="text-[11px] text-stone-500">
+                Tự đổi tên, tải ảnh trực tiếp & tạo link động cho người ấy
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 transition-colors"
+            className="rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* STEP 1: PIN UNLOCK SCREEN */}
+        {/* PIN Authentication Screen */}
         {!isUnlocked ? (
-          <form onSubmit={handleUnlock} className="py-6 max-w-sm mx-auto text-center space-y-4">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-600 border border-rose-100">
+          <form onSubmit={handleUnlock} className="p-6 sm:p-8 space-y-5 text-center flex-1">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-700">
               <Lock size={26} />
             </div>
             <div>
-              <h3 className="text-base font-bold text-stone-900">Nhập Mã PIN Quản Trị</h3>
-              <p className="text-xs text-stone-500 mt-1">
-                Để bảo vệ quyền riêng tư, nhập mã PIN để vào cài đặt. (Mặc định: <span className="font-bold text-rose-600">2010</span>)
+              <h4 className="text-base font-bold text-stone-900">Mã PIN Quản Trị</h4>
+              <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+                Nhập mã PIN để mở khóa trang cấu hình (Mặc định: <strong>2010</strong>)
               </p>
             </div>
 
-            <div className="space-y-2">
+            <div className="max-w-xs mx-auto">
               <input
                 type="password"
-                maxLength={10}
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                placeholder="Nhập PIN (2010)"
-                className="w-full text-center text-xl tracking-widest rounded-xl border border-rose-200 p-3 focus:outline-none focus:ring-2 focus:ring-rose-400 font-mono shadow-inner"
+                placeholder="Nhập mã PIN..."
                 autoFocus
+                className="w-full text-center text-lg tracking-widest font-mono rounded-xl border border-stone-300 p-3 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 focus:outline-none"
               />
-              {pinError && <p className="text-xs text-red-500 font-medium">{pinError}</p>}
+              {pinError && <p className="text-xs text-red-600 mt-2 font-medium">{pinError}</p>}
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-3 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold transition-all shadow-md active:scale-98"
-            >
-              Mở Khóa Bảng Setup
-            </button>
+            <div className="pt-2">
+              <button
+                type="submit"
+                className="w-full max-w-xs py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-200 transition-all active:scale-95"
+              >
+                MỞ KHÓA BẢNG ĐIỀU KHIỂN
+              </button>
+            </div>
           </form>
         ) : (
-          /* STEP 2: ADMIN SETUP CONTENT */
-          <div className="space-y-5">
-            {/* Navigation Tabs */}
-            <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-xl border border-stone-200/60 overflow-x-auto">
+          /* Main Tabbed Management Panel */
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
+            {/* Tab Navigation */}
+            <div className="flex rounded-xl bg-stone-100 p-1 border border-stone-200/80">
               <button
                 onClick={() => setActiveTab('link')}
                 className={`flex-1 py-2 px-2 text-xs sm:text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap ${
@@ -287,7 +366,7 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                 }`}
               >
                 <Link2 size={14} />
-                <span>1. Mã Link & Tên</span>
+                <span>1. Tên & Link</span>
               </button>
               <button
                 onClick={() => setActiveTab('photos')}
@@ -296,7 +375,7 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                 }`}
               >
                 <Camera size={14} />
-                <span>2. Kho Ảnh ({config.photos.length})</span>
+                <span>2. Tải Ảnh ({config.photos.length})</span>
               </button>
               <button
                 onClick={() => setActiveTab('content')}
@@ -331,12 +410,12 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                       type="text"
                       value={slug}
                       onChange={(e) => handleSlugChange(e.target.value)}
-                      placeholder="VD: huong, mai, linh, lan..."
+                      placeholder="VD: huong, ngoc, mai, linh..."
                       className="flex-1 rounded-xl border border-rose-300 bg-white p-2.5 text-sm font-mono text-rose-900 font-bold focus:ring-2 focus:ring-rose-400 focus:outline-none"
                     />
                   </div>
                   <p className="text-[11px] text-stone-600 leading-snug">
-                    👉 Khi người bạn hoặc vợ mở link có chứa <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-rose-200 text-rose-700 font-semibold">{`?love=${slug || 'huong'}`}</code>, trang web sẽ tự động mở đúng thiệp của cô ấy!
+                    👉 Khi mở link có chứa <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-rose-200 text-rose-700 font-semibold">{`?love=${slug || 'huong'}`}</code>, trang web sẽ tự động mở đúng thiệp của cô ấy!
                   </p>
                 </div>
 
@@ -349,7 +428,7 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                       type="text"
                       value={config.herName}
                       onChange={(e) => setConfig({ ...config, herName: e.target.value })}
-                      placeholder="VD: Hương, Bé Miu, Thu Hương..."
+                      placeholder="VD: Hương, Ngọc, Bé Miu..."
                       className="w-full rounded-xl border border-stone-200 p-2.5 text-xs sm:text-sm text-stone-800 focus:ring-2 focus:ring-rose-400 focus:outline-none"
                     />
                     <p className="text-[10px] text-stone-400 mt-1">
@@ -375,7 +454,7 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                 </div>
 
                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 leading-relaxed">
-                  💡 <strong>Ghi chú an toàn:</strong> Đường link mặc định của bạn là <code className="font-semibold text-amber-950 font-mono">?love=man</code> vẫn luôn giữ nguyên 100% hình ảnh và tên của Mận Mận mà bạn đã cấu hình, hoàn toàn không bị ảnh hưởng!
+                  🛡️ <strong>Bảo Mật Quyền Riêng Tư:</strong> Trang mặc định của bạn là <code className="font-semibold text-amber-950 font-mono">?love=man</code> vẫn giữ nguyên 100% hình ảnh của Mẫn Mẫn. Khi bạn bè tạo tên khác (ví dụ: <code>?love=ngọc</code>), hệ thống bắt buộc phải tải ảnh riêng của cô ấy thì mới hiển thị, tuyệt đối không lấy nhầm ảnh của người khác!
                 </div>
               </div>
             )}
@@ -383,6 +462,19 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
             {/* TAB 2: PHOTOS DIRECT UPLOAD */}
             {activeTab === 'photos' && (
               <div className="space-y-4">
+                {/* Privacy Banner if 0 photos */}
+                {config.photos.length === 0 && !isManSlug(slug) && (
+                  <div className="rounded-xl bg-rose-50 border border-rose-200 p-3.5 flex items-start gap-2.5 text-xs text-rose-900">
+                    <ShieldAlert size={18} className="text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Chưa có ảnh nào của {config.herName || 'cô ấy'}</p>
+                      <p className="text-[11px] text-stone-600 mt-0.5 leading-relaxed">
+                        Để bảo vệ quyền riêng tư cá nhân, thiệp của {config.herName || slug} sẽ <strong>không hiển thị</strong> nếu chưa được tải ảnh lên. Hãy bấm nút bên dưới để chọn ảnh của nàng!
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Direct Upload Button from device */}
                 <div className="rounded-2xl border-2 border-dashed border-rose-300 bg-rose-50/50 p-5 text-center transition-colors hover:bg-rose-50">
                   <input
@@ -406,7 +498,7 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                         {isUploading ? 'Đang tải & xử lý ảnh...' : '📸 TẢI ẢNH TRỰC TIẾP TỪ ĐIỆN THOẠI / MÁY TÍNH'}
                       </p>
                       <p className="text-xs text-stone-500 mt-0.5">
-                        Bấm vào đây để chọn từ 1 đến 7 tấm ảnh của cô ấy. Không cần vào trang postimages gì cả!
+                        Bấm vào đây để chọn từ 1 đến 7 tấm ảnh của cô ấy. Ảnh được nén tự động và lưu an toàn!
                       </p>
                     </div>
                   </label>
@@ -448,60 +540,70 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-bold text-stone-700">
-                      Danh sách ảnh hiển thị trong Album ({config.photos.length} ảnh):
+                      Danh sách ảnh trong Album ({config.photos.length} ảnh):
                     </p>
-                    {config.photos.length === 0 && (
+                    {isManSlug(slug) && config.photos.length === 0 && (
                       <button
-                        onClick={handleUseDefaultPhotos}
+                        onClick={handleRestoreManPhotos}
                         className="text-[11px] text-rose-600 hover:underline font-medium"
                       >
-                        Khôi phục ảnh mẫu mặc định
+                        Khôi phục 7 ảnh gốc của Mẫn
                       </button>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto p-1">
-                    {config.photos.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="group relative rounded-xl border border-stone-200 bg-white p-2 shadow-sm flex flex-col gap-1.5"
-                      >
-                        <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-stone-100">
-                          <img
-                            src={item.url}
-                            alt={item.caption}
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              // fallback thumbnail
-                              (e.target as HTMLElement).style.opacity = '0.5';
+                  {config.photos.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-stone-200 p-6 text-center bg-stone-50/50">
+                      <p className="text-xs font-semibold text-stone-500">
+                        Chưa có ảnh nào được thêm cho {config.herName || 'người nhận'}.
+                      </p>
+                      <p className="text-[11px] text-stone-400 mt-1">
+                        Hãy bấm nút màu đỏ ở trên để tải ảnh từ máy tính hoặc điện thoại của bạn!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto p-1">
+                      {config.photos.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="group relative rounded-xl border border-stone-200 bg-white p-2 shadow-sm flex flex-col gap-1.5"
+                        >
+                          <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-stone-100">
+                            <img
+                              src={item.url}
+                              alt={item.caption}
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.opacity = '0.5';
+                              }}
+                            />
+                            <span className="absolute top-1 left-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-full font-mono">
+                              #{index + 1}
+                            </span>
+                            <button
+                              onClick={() => handleRemovePhoto(item.id)}
+                              className="absolute top-1 right-1 h-6 w-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow opacity-90 hover:opacity-100 hover:scale-110 transition-all"
+                              title="Xóa ảnh này"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            value={item.caption}
+                            onChange={(e) => {
+                              const updated = config.photos.map((p) =>
+                                p.id === item.id ? { ...p, caption: e.target.value } : p
+                              );
+                              setConfig({ ...config, photos: updated });
                             }}
+                            className="w-full text-[11px] border-b border-stone-200 focus:border-rose-400 focus:outline-none text-stone-800 px-1 py-0.5"
+                            placeholder="Lời tựa ảnh..."
                           />
-                          <span className="absolute top-1 left-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-full font-mono">
-                            #{index + 1}
-                          </span>
-                          <button
-                            onClick={() => handleRemovePhoto(item.id)}
-                            className="absolute top-1 right-1 h-6 w-6 rounded-full bg-red-600 text-white flex items-center justify-center shadow opacity-90 hover:opacity-100 hover:scale-110 transition-all"
-                            title="Xóa ảnh này"
-                          >
-                            <Trash2 size={12} />
-                          </button>
                         </div>
-                        <input
-                          type="text"
-                          value={item.caption}
-                          onChange={(e) => {
-                            const updated = config.photos.map((p) =>
-                              p.id === item.id ? { ...p, caption: e.target.value } : p
-                            );
-                            setConfig({ ...config, photos: updated });
-                          }}
-                          className="w-full text-[11px] border-b border-stone-200 focus:border-rose-400 focus:outline-none text-stone-800 px-1 py-0.5"
-                          placeholder="Lời tựa ảnh..."
-                        />
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -567,15 +669,25 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
             {/* TAB 4: SHARE LINKS */}
             {activeTab === 'share' && (
               <div className="space-y-4">
+                {/* Warning if 0 photos and not man */}
+                {config.photos.length === 0 && !isManSlug(slug) && (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 flex items-center gap-2">
+                    <ShieldAlert size={16} className="text-amber-600 shrink-0" />
+                    <span>
+                      ⚠️ Bạn chưa tải ảnh nào cho {config.herName || slug}. Bạn cần tải ít nhất 1 ảnh trước khi gửi link để thiệp có thể hiển thị.
+                    </span>
+                  </div>
+                )}
+
                 {/* Clean Link Card */}
                 <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-rose-950 flex items-center gap-1.5">
                       <Sparkles size={14} className="text-rose-600" />
-                      <span>ĐƯỜNG LINK RIÊNG CHUẨN CỦA NÀNG:</span>
+                      <span>ĐƯỜNG LINK RIÊNG CỦA NÀNG:</span>
                     </span>
                     <span className="text-[10px] bg-rose-200/80 text-rose-800 font-bold px-2 py-0.5 rounded-full">
-                      KHUYÊN DÙNG
+                      CHUẨN
                     </span>
                   </div>
 
@@ -606,7 +718,7 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                 {/* Guide for friends */}
                 <div className="rounded-2xl bg-sky-50 border border-sky-200 p-4 space-y-2">
                   <p className="text-xs font-bold text-sky-950">
-                    💡 Bạn bè muốn tự tạo link riêng cho vợ họ thì làm thế nào?
+                    💡 Hướng dẫn cho bạn bè tự tạo link riêng cho vợ họ:
                   </p>
                   <div className="text-[11px] text-sky-900 leading-relaxed space-y-1.5">
                     <p>
@@ -614,13 +726,13 @@ export const AdminSetupModal: React.FC<AdminSetupModalProps> = ({
                       <code className="bg-white px-1.5 py-0.5 rounded border border-sky-200 font-mono text-sky-800 font-bold">
                         {`${baseUrl}?admin=1`}
                       </code>{' '}
-                      (Mã PIN mở khóa: <strong>2010</strong>).
+                      (Mã PIN: <strong>2010</strong>).
                     </p>
                     <p>
-                      <strong>2. Bạn bè nhập tên & ảnh:</strong> Họ vào tab 1 đổi mã link (vd: <code>huong</code>, <code>mai</code>...), đổi tên vợ họ, tải ảnh trực tiếp lên và bấm "Lưu & Áp Dụng".
+                      <strong>2. Tải ảnh & đặt tên:</strong> Họ điền mã link (vd: <code>ngoc</code>, <code>huong</code>...), đổi tên vợ họ và tải ảnh của cô ấy lên trực tiếp, sau đó bấm "Lưu & Áp Dụng".
                     </p>
                     <p>
-                      <strong>3. Gửi link cho vợ:</strong> Họ copy link <code>?love=huong</code> gửi cho vợ họ là xong!
+                      <strong>3. Riêng tư tuyệt đối:</strong> Thiệp của ai sẽ chỉ có ảnh của người đó. Nếu chưa tải ảnh, hệ thống tuyệt đối không lấy ảnh của Mẫn để thay thế.
                     </p>
                   </div>
                 </div>

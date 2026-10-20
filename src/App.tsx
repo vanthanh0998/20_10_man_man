@@ -18,11 +18,15 @@ import { AdminSetupModal } from './components/AdminSetupModal.tsx';
 import { NotFoundPage } from './components/NotFoundPage.tsx';
 import { LoveConfig, DEFAULT_LOVE_CONFIG } from './config/loveConfig.ts';
 import { slugToVietnameseName } from './utils/vietnameseNameMap.ts';
+import { isManSlug, isDefaultManPhoto } from './utils/romanticPlaceholder.ts';
 
 export default function App() {
   const [config, setConfig] = useState<LoveConfig>(DEFAULT_LOVE_CONFIG);
   const [currentSlug, setCurrentSlug] = useState<string>('man');
   const [isNotFound, setIsNotFound] = useState<boolean>(false);
+  const [notFoundMode, setNotFoundMode] = useState<'missing_slug' | 'unconfigured'>('missing_slug');
+  const [unconfiguredSlug, setUnconfiguredSlug] = useState<string>('');
+  const [unconfiguredName, setUnconfiguredName] = useState<string>('');
   const [isEnvelopeOpen, setIsEnvelopeOpen] = useState<boolean>(false);
   const [autoStartAudio, setAutoStartAudio] = useState<boolean>(false);
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
@@ -51,18 +55,24 @@ export default function App() {
           setConfig((prev) => ({
             ...prev,
             herName: initialName,
+            photos: [],
             letterTitle: `Những Lời Chúc Ngọt Ngào Nhất Dành Cho ${initialName}`,
             letterSalutation: `${initialName} thương yêu,`,
           }));
         } else {
           setIsNotFound(true);
+          setNotFoundMode('missing_slug');
           return;
         }
-      } else {
-        setIsNotFound(false);
       }
 
-      const rawSlug = (urlLove || 'man').trim();
+      const rawSlug = (urlLove || (urlAdmin ? 'huong' : '')).trim();
+      if (!rawSlug) {
+        setIsNotFound(true);
+        setNotFoundMode('missing_slug');
+        return;
+      }
+
       const cleanSlug = rawSlug.toLowerCase();
       setCurrentSlug(cleanSlug);
 
@@ -111,8 +121,9 @@ export default function App() {
         }
       }
 
-      // CASE 1: Default Love Site for 'man' or 'manman' (Untouched, rock-solid with 7 bundled photos!)
-      if (cleanSlug === 'man' || cleanSlug === 'manman' || cleanSlug === 'man_man') {
+      // CASE 1: Default Love Site for 'man' (Untouched, rock-solid with 7 bundled photos!)
+      if (isManSlug(cleanSlug)) {
+        setIsNotFound(false);
         const savedManConfig = localStorage.getItem('love_slug_man');
         if (savedManConfig) {
           try {
@@ -120,7 +131,6 @@ export default function App() {
             setConfig({
               ...DEFAULT_LOVE_CONFIG,
               ...parsed,
-              // Always ensure 7 bundled photos are preserved unless user specifically uploaded new ones
               photos:
                 customUrlPhotos ||
                 (parsed.photos && parsed.photos.length >= 7 ? parsed.photos : DEFAULT_LOVE_CONFIG.photos),
@@ -140,37 +150,59 @@ export default function App() {
         return;
       }
 
-      // CASE 2: Dynamic Custom Slug for other recipients (e.g., ?love=huong)
+      // CASE 2: Dynamic Custom Slug for other recipients (e.g., ?love=huong, ?love=ngoc)
       const mappedVietnameseName = slugToVietnameseName(cleanSlug);
 
       // Check localStorage for saved edits of this specific slug
       const savedSlugConfig = localStorage.getItem(`love_slug_${cleanSlug}`);
+      let savedValidPhotos: GalleryPhoto[] = [];
+      let savedParsed: Partial<LoveConfig> | null = null;
+
       if (savedSlugConfig) {
         try {
           const parsed: LoveConfig = JSON.parse(savedSlugConfig);
-          setConfig((prev) => ({
-            ...prev,
-            ...parsed,
-            ...(urlPayloadConfig || {}),
-            herName: urlHer || urlPayloadConfig?.herName || parsed.herName || mappedVietnameseName,
-            photos: customUrlPhotos || urlPayloadConfig?.photos || parsed.photos || prev.photos,
-          }));
-          return;
+          savedParsed = parsed;
+          // Privacy protection: exclude any default bundled photos of Mẫn!
+          savedValidPhotos = (parsed.photos || []).filter((p) => !isDefaultManPhoto(p.url));
         } catch {
-          // fallback
+          // ignore corrupted storage
         }
       }
 
-      // If not saved in localStorage yet, initialize with auto-accented Vietnamese name
-      setConfig((prev) => ({
-        ...prev,
+      // Check whether photos have been set up for this recipient
+      const activePhotos =
+        customUrlPhotos ||
+        urlPayloadConfig?.photos ||
+        (savedValidPhotos.length > 0 ? savedValidPhotos : null);
+
+      // CRITICAL PRIVACY RULE:
+      // "nếu 1 tên nào đó chưa được setup theo ảnh của họ thì không được hiển thị."
+      // If a slug does not have custom photos configured, DO NOT display the card!
+      if (!activePhotos || activePhotos.length === 0) {
+        if (!urlAdmin) {
+          setIsNotFound(true);
+          setNotFoundMode('unconfigured');
+          setUnconfiguredSlug(cleanSlug);
+          setUnconfiguredName(urlHer || urlPayloadConfig?.herName || mappedVietnameseName);
+          return;
+        }
+      }
+
+      // Slug is configured with custom photos! Render customized card:
+      setIsNotFound(false);
+      const recipientName =
+        urlHer || urlPayloadConfig?.herName || savedParsed?.herName || mappedVietnameseName;
+
+      setConfig({
+        ...DEFAULT_LOVE_CONFIG,
+        ...(savedParsed || {}),
         ...(urlPayloadConfig || {}),
-        herName: urlHer || urlPayloadConfig?.herName || mappedVietnameseName,
-        senderName: urlFrom || urlPayloadConfig?.senderName || prev.senderName,
-        letterTitle: `Những Lời Chúc Ngọt Ngào Nhất Dành Cho ${urlHer || mappedVietnameseName}`,
-        letterSalutation: `${urlHer || mappedVietnameseName} thương yêu,`,
-        photos: customUrlPhotos || urlPayloadConfig?.photos || prev.photos,
-      }));
+        herName: recipientName,
+        senderName: urlFrom || urlPayloadConfig?.senderName || savedParsed?.senderName || 'Anh Yêu',
+        letterTitle: `Những Lời Chúc Ngọt Ngào Nhất Dành Cho ${recipientName}`,
+        letterSalutation: `${recipientName} thương yêu,`,
+        photos: activePhotos || [],
+      });
     } catch {
       // safe fallback
     }
@@ -182,6 +214,14 @@ export default function App() {
   };
 
   const handleSecretAdminUnlock = () => {
+    setIsAdminMode(true);
+    setIsAdminOpen(true);
+  };
+
+  const handleOpenAdminWithSlug = (targetSlug?: string) => {
+    if (targetSlug) {
+      setCurrentSlug(targetSlug.toLowerCase().trim());
+    }
     setIsAdminMode(true);
     setIsAdminOpen(true);
   };
@@ -213,15 +253,14 @@ export default function App() {
     window.location.href = url.toString();
   };
 
-  // Render Romantic 404 Page when ?love is missing
+  // Render 404 or Unconfigured Privacy Screen
   if (isNotFound) {
     return (
       <NotFoundPage
-        onOpenAdmin={() => {
-          setIsAdminMode(true);
-          setIsAdminOpen(true);
-          setIsNotFound(false);
-        }}
+        mode={notFoundMode}
+        unconfiguredSlug={unconfiguredSlug}
+        unconfiguredName={unconfiguredName}
+        onOpenAdmin={handleOpenAdminWithSlug}
         onSelectSlug={handleSelectSlugFromNotFound}
       />
     );
@@ -247,19 +286,20 @@ export default function App() {
           herName={config.herName}
           senderName={config.senderName}
           onOpenCustomize={() => setIsAdminOpen(true)}
-          heroImage={config.photos[0]?.url || DEFAULT_LOVE_CONFIG.photos[0].url}
+          heroImage={config.photos[0]?.url || ''}
           isAdminMode={isAdminMode}
           onSecretAdminUnlock={handleSecretAdminUnlock}
         />
 
-        {/* Heartfelt Love Letter & 20/10 Wishes */}
+        {/* Romantic Letter Section */}
+        {/* Romantic Letter Section */}
         <LoveLetterSection
           herName={config.herName}
           senderName={config.senderName}
-          bouquetImage={config.photos[2]?.url || DEFAULT_LOVE_CONFIG.photos[2].url}
+          bouquetImage=""
         />
 
-        {/* Romantic Photo Gallery */}
+        {/* Photo Gallery Section */}
         <PhotoGallerySection
           photos={config.photos}
           herName={config.herName}
@@ -267,37 +307,62 @@ export default function App() {
           isAdminMode={isAdminMode}
         />
 
-        {/* 6 Reasons Why I Love You */}
+        {/* 20 Reasons Why I Love You */}
         <ReasonsSection herName={config.herName} />
 
-        {/* Sweet Love Vouchers */}
+        {/* Love Vouchers & Coupons */}
         <RomanticVouchersSection herName={config.herName} />
 
-        {/* Grab Drink Gift + Heartfelt Love Reply Box */}
+        {/* Interactive Response, Grab Gift & Secret Letter */}
         <LoveReplyAndGiftSection
           herName={config.herName}
           senderName={config.senderName}
           grabGiftLink={config.grabGiftLink}
           phoneNumber={config.phoneNumber}
         />
+
+        {/* Footer with Discreet Admin Unlock */}
+        <footer className="py-12 px-4 text-center text-xs text-stone-400 border-t border-rose-100/60 bg-white/40 backdrop-blur-sm">
+          <div className="max-w-md mx-auto space-y-3">
+            <p className="flex items-center justify-center gap-1.5 text-stone-500">
+              <span>Được tạo ra với trọn vẹn yêu thương dành cho</span>
+              <strong className="text-rose-600 font-semibold">{config.herName}</strong>
+            </p>
+            <p className="text-[11px] text-stone-400">
+              Chúc mừng Ngày Phụ Nữ Việt Nam 20 Tháng 10 &bull; Chúc em mãi luôn rạng ngời và hạnh phúc nhất
+            </p>
+
+            {/* Subtle Admin Link */}
+            <div className="pt-2">
+              <button
+                onClick={() => setIsAdminOpen(true)}
+                className="inline-flex items-center gap-1 text-[11px] text-stone-400 hover:text-rose-600 transition-colors py-1 px-2.5 rounded-full hover:bg-rose-50/60"
+                title="Bảng điều khiển cá nhân hóa & quản trị"
+              >
+                <Settings size={12} />
+                <span>Cài Đặt Riêng (?love={currentSlug})</span>
+              </button>
+            </div>
+          </div>
+        </footer>
       </main>
 
-      {/* Discreet Admin Floating Button at Bottom-Left: ONLY visible when logged in via ?admin=1 */}
-      {isAdminMode && (
-        <div className="fixed bottom-5 left-3 sm:left-5 z-40">
-          <button
-            onClick={() => setIsAdminOpen(true)}
-            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-stone-600 bg-white/95 hover:bg-white border border-stone-200 hover:border-rose-300 rounded-full shadow-md backdrop-blur-md transition-all hover:scale-105 active:scale-95 group"
-            title="Bảng Setup dành cho Admin (Mã PIN: 2010)"
-          >
-            <Settings size={13} className="text-stone-400 group-hover:text-rose-600 group-hover:rotate-45 transition-transform duration-300" />
-            <span className="hidden sm:inline">Setup Admin</span>
-            <span className="sm:hidden text-[10px]">Setup</span>
-          </button>
-        </div>
-      )}
+      {/* Floating Admin Quick Access Button (Always accessible) */}
+      <div className="fixed bottom-4 left-4 z-40 print:hidden">
+        <button
+          onClick={() => setIsAdminOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-stone-900/85 hover:bg-stone-950 text-white text-xs font-semibold shadow-lg backdrop-blur-md transition-all active:scale-95 border border-stone-700/50 hover:shadow-rose-900/20"
+          title="Tự đổi tên nàng, đổi ảnh & tạo link riêng"
+        >
+          <Settings size={14} className="text-rose-400" />
+          <span className="hidden sm:inline">Quản Trị</span>
+          <span className="text-[10px] bg-rose-950 text-rose-300 px-1.5 py-0.2 rounded font-mono">
+            ?love={currentSlug}
+          </span>
+        </button>
+      </div>
 
-      {/* Dedicated Admin Setup Modal */}
+      {/* Admin Setup Modal */}
       <AdminSetupModal
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}

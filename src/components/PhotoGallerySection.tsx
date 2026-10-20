@@ -7,6 +7,7 @@ import fallbackImg4 from '../assets/my-photos/her-4.jpg';
 import fallbackImg5 from '../assets/my-photos/her-5.jpg';
 import fallbackImg6 from '../assets/my-photos/her-6.jpg';
 import fallbackImg7 from '../assets/my-photos/her-7.jpg';
+import { GENERIC_ROMANTIC_PLACEHOLDER } from '../utils/romanticPlaceholder.ts';
 
 const FALLBACK_PICS = [fallbackImg1, fallbackImg2, fallbackImg3, fallbackImg4, fallbackImg5, fallbackImg6, fallbackImg7];
 
@@ -79,7 +80,9 @@ export const PhotoGallerySection: React.FC<PhotoGallerySectionProps> = ({
                   alt={photo.caption}
                   referrerPolicy="no-referrer"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = FALLBACK_PICS[index % FALLBACK_PICS.length];
+                    (e.target as HTMLImageElement).src = herName.includes('Mẫn')
+                      ? FALLBACK_PICS[index % FALLBACK_PICS.length]
+                      : GENERIC_ROMANTIC_PLACEHOLDER;
                   }}
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />

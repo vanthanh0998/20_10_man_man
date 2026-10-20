@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Heart, Sparkles, SlidersHorizontal, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import fallbackHeroImg from '../assets/my-photos/her-1.jpg';
+import { GENERIC_ROMANTIC_PLACEHOLDER } from '../utils/romanticPlaceholder.ts';
 
 interface HeroSectionProps {
   herName: string;
@@ -198,11 +199,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-rose-100 bg-white p-2">
                 <div className="relative aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/5] rounded-xl overflow-hidden bg-rose-50">
                   <img
-                    src={heroImage || fallbackHeroImg}
+                    src={heroImage || (herName.includes('Mẫn') ? fallbackHeroImg : GENERIC_ROMANTIC_PLACEHOLDER)}
                     alt={`Bức hình kỷ niệm cùng ${herName}`}
                     referrerPolicy="no-referrer"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = fallbackHeroImg;
+                      (e.target as HTMLImageElement).src = herName.includes('Mẫn')
+                        ? fallbackHeroImg
+                        : GENERIC_ROMANTIC_PLACEHOLDER;
                     }}
                     className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                   />
